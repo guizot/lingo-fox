@@ -36,7 +36,8 @@ Words progress through 5 distinct learning stages:
 ### 1. Installation
 
 ```bash
-cd GRWLY
+git clone https://github.com/guizot/lingo-fox.git
+cd lingo-fox
 npm install
 ```
 
@@ -98,7 +99,7 @@ This validates:
 ## 📂 Project Architecture
 
 ```text
-GRWLY/
+lingo-fox/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
