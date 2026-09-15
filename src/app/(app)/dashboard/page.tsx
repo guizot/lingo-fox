@@ -13,8 +13,10 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const allLanguages = await getLanguages();
-  const userLanguages = await getUserLanguages(user.id);
+  const [allLanguages, userLanguages] = await Promise.all([
+    getLanguages(),
+    getUserLanguages(user.id),
+  ]);
 
   const cookieStore = await cookies();
   const activeLangCookie = cookieStore.get("lingo_fox_active_lang") || cookieStore.get("grwly_active_lang");
@@ -29,13 +31,15 @@ export default async function DashboardPage() {
 
   const activeLang = userLanguages.find((ul) => ul.languageId === activeLanguageId);
 
-  // Fetch data for active language
-  const statusCounts = await getStatusCounts(user.id, activeLanguageId);
-  const reviewQueue = await getReviewQueue(user.id, activeLanguageId, 30);
-  const forgottenWords = await getForgottenWords(user.id, activeLanguageId, 6);
-  const recentWords = await getVocabularyForUser(user.id, activeLanguageId, {
-    sortBy: "recently_added",
-  });
+  // Fetch data for active language in parallel
+  const [statusCounts, reviewQueue, forgottenWords, recentWords] = await Promise.all([
+    getStatusCounts(user.id, activeLanguageId),
+    getReviewQueue(user.id, activeLanguageId, 30),
+    getForgottenWords(user.id, activeLanguageId, 6),
+    getVocabularyForUser(user.id, activeLanguageId, {
+      sortBy: "recently_added",
+    }),
+  ]);
 
   // Calculate greeting
   const hour = new Date().getHours();

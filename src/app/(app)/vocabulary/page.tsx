@@ -23,8 +23,10 @@ export default async function VocabularyPage() {
 
   const activeUserLang = userLanguages.find((ul) => ul.languageId === activeLanguageId);
 
-  const words = await getVocabularyForUser(user.id, activeLanguageId);
-  const statusCounts = await getStatusCounts(user.id, activeLanguageId);
+  const [words, statusCounts] = await Promise.all([
+    getVocabularyForUser(user.id, activeLanguageId),
+    getStatusCounts(user.id, activeLanguageId),
+  ]);
 
   const countsRecord: Record<string, number> = {
     all: statusCounts.total,

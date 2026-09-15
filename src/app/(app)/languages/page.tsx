@@ -7,8 +7,10 @@ export const dynamic = "force-dynamic";
 
 export default async function LanguagesPage() {
   const user = await requireUser();
-  const allLanguages = await getLanguages();
-  const userLanguages = await getUserLanguages(user.id);
+  const [allLanguages, userLanguages] = await Promise.all([
+    getLanguages(),
+    getUserLanguages(user.id),
+  ]);
 
   const cookieStore = await cookies();
   const activeLangCookie = cookieStore.get("lingo_fox_active_lang") || cookieStore.get("grwly_active_lang");

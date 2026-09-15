@@ -16,6 +16,13 @@ import { useLanguage } from "@/context/LanguageContext";
 export function MobileNav() {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const [pendingPath, setPendingPath] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setPendingPath(null);
+  }, [pathname]);
+
+  const currentPath = pendingPath || pathname;
 
   const navItems = [
     { href: "/dashboard", label: t.nav.home, icon: LayoutDashboard },
@@ -31,13 +38,15 @@ export function MobileNav() {
         const Icon = item.icon;
         const isActive =
           item.href === "/dashboard"
-            ? pathname === "/dashboard" || pathname === "/"
-            : pathname.startsWith(item.href);
+            ? currentPath === "/dashboard" || currentPath === "/"
+            : currentPath.startsWith(item.href);
 
         return (
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
+            onClick={() => setPendingPath(item.href)}
             className={cn(
               "flex flex-1 flex-col items-center justify-center gap-0.5 py-0.5 text-[10px] font-medium transition-all active:scale-90 select-none",
               isActive

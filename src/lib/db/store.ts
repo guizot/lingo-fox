@@ -377,15 +377,18 @@ export async function getLocalStore(): Promise<DatabaseState> {
   // If live Neon PostgreSQL is connected and not in test mode, fetch from database!
   if (db && !isTestEnv) {
     try {
-      const dbLangs = await db.select().from(schema.languages);
-      if (dbLangs.length > 0) {
-        const dbUserLangs = await db.select().from(schema.userLanguages);
-        const dbVocab = await db.select().from(schema.vocabulary);
-        const dbExamples = await db.select().from(schema.vocabularyExamples);
-        const dbReviews = await db.select().from(schema.vocabularyReviews);
-        const dbTags = await db.select().from(schema.tags);
-        const dbVocabTags = await db.select().from(schema.vocabularyTags);
+      const [dbLangs, dbUserLangs, dbVocab, dbExamples, dbReviews, dbTags, dbVocabTags] =
+        await Promise.all([
+          db.select().from(schema.languages),
+          db.select().from(schema.userLanguages),
+          db.select().from(schema.vocabulary),
+          db.select().from(schema.vocabularyExamples),
+          db.select().from(schema.vocabularyReviews),
+          db.select().from(schema.tags),
+          db.select().from(schema.vocabularyTags),
+        ]);
 
+      if (dbLangs.length > 0) {
         // If Neon DB has data, load it!
         if (dbVocab.length > 0 || dbUserLangs.length > 0) {
           const stateData: Omit<DatabaseState, "save"> = {

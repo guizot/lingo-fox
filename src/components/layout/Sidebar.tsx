@@ -58,6 +58,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const onMobileClose = propOnMobileClose || (() => sidebarContext.setMobileSidebarOpen(false));
 
   const [localSignOutOpen, setLocalSignOutOpen] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+
+  // Clear pendingPath whenever pathname updates
+  React.useEffect(() => {
+    setPendingPath(null);
+  }, [pathname]);
+
+  const currentPath = pendingPath || pathname;
 
   const toggle = () => onCollapsedChange(!collapsed);
 
@@ -79,12 +87,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const isItemActive = (item: { href: string; exact?: boolean }) => {
     if (item.href === '/dashboard') {
-      return pathname === '/dashboard' || pathname === '/';
+      return currentPath === '/dashboard' || currentPath === '/';
     }
     if (item.exact) {
-      return pathname === item.href;
+      return currentPath === item.href;
     }
-    return pathname.startsWith(item.href);
+    return currentPath.startsWith(item.href);
   };
 
   return (
@@ -185,7 +193,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={onMobileClose}
+                prefetch={true}
+                onClick={() => {
+                  setPendingPath(item.href);
+                  if (onMobileClose) onMobileClose();
+                }}
                 title={collapsed ? item.label : undefined}
                 className={`${itemBase} ${active ? itemActive : itemIdle} ${
                   collapsed ? 'md:justify-center md:px-0' : ''

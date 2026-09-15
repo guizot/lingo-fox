@@ -19,8 +19,11 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  const allLanguages = await getLanguages();
-  let userLanguages = await getUserLanguages(user.id);
+  const [allLanguages, initialUserLanguages] = await Promise.all([
+    getLanguages(),
+    getUserLanguages(user.id),
+  ]);
+  let userLanguages = initialUserLanguages;
 
   // If new user with no languages, initialize with German and Indonesian translation support
   if (userLanguages.length === 0) {
