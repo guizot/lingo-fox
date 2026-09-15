@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/server";
-import { getVocabularyByIdForUser } from "@/lib/db/vocabulary";
-import { getReviewHistory } from "@/lib/db/reviews";
+import { getVocabularyDetailForUser } from "@/lib/db/vocabulary";
 import { WordDetailView } from "@/components/vocabulary/WordDetailView";
 
 export const dynamic = "force-dynamic";
@@ -11,20 +10,17 @@ interface WordDetailPageProps {
 }
 
 export default async function WordDetailPage({ params }: WordDetailPageProps) {
-  const user = await requireUser();
-  const { id } = await params;
+  const [user, { id }] = await Promise.all([requireUser(), params]);
   const vocabId = parseInt(id, 10);
 
   if (isNaN(vocabId)) {
     notFound();
   }
 
-  const word = await getVocabularyByIdForUser(user.id, vocabId);
-  if (!word) {
+  const detail = await getVocabularyDetailForUser(user.id, vocabId);
+  if (!detail) {
     notFound();
   }
 
-  const reviews = await getReviewHistory(user.id, vocabId);
-
-  return <WordDetailView word={word} reviews={reviews} />;
+  return <WordDetailView word={detail.word} reviews={detail.reviews} />;
 }

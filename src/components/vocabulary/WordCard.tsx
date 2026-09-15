@@ -211,6 +211,7 @@ export function WordCard({
       <div className="flex items-center justify-between gap-2">
         <Link
           href={`/vocabulary/${word.id}`}
+          prefetch={true}
           className="flex-1 cursor-pointer min-w-0"
         >
           <div className="flex items-baseline gap-2">
@@ -256,6 +257,7 @@ export function WordCard({
             >
               <Link
                 href={`/vocabulary/${word.id}`}
+                prefetch={true}
                 className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800 transition-colors active:scale-98"
                 onClick={() => setMenuOpen(false)}
               >

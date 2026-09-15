@@ -1,4 +1,4 @@
-import { VocabularyItem, VocabularyStatus, StatusCounts, VocabularyExample } from "@/types";
+import { VocabularyItem, VocabularyStatus, StatusCounts, VocabularyExample, VocabularyReview } from "@/types";
 import { getLocalStore } from "./store";
 import { normalizeWord } from "../utils";
 import { db } from "@/db";
@@ -232,6 +232,81 @@ export async function getVocabularyByIdForUser(
     examples,
     tags,
   };
+}
+
+export async function getVocabularyDetailForUser(
+  userId: string,
+  vocabId: number
+): Promise<{ word: VocabularyItem; reviews: VocabularyReview[] } | null> {
+  if (db && !isTestEnv) {
+    try {
+      const row = await db.query.vocabulary.findFirst({
+        where: and(eq(schema.vocabulary.id, vocabId), eq(schema.vocabulary.userId, userId)),
+        with: {
+          language: true,
+          examples: true,
+          tags: {
+            with: {
+              tag: true,
+            },
+          },
+          reviews: {
+            orderBy: (reviews, { desc }) => [desc(reviews.reviewedAt)],
+          },
+        },
+      });
+
+      if (!row) return null;
+
+      const word: VocabularyItem = {
+        ...row,
+        status: row.status as VocabularyStatus,
+        createdAt: new Date(row.createdAt),
+        updatedAt: new Date(row.updatedAt),
+        nextReviewAt: new Date(row.nextReviewAt),
+        lastReviewedAt: row.lastReviewedAt ? new Date(row.lastReviewedAt) : null,
+        language: row.language
+          ? {
+              id: row.language.id,
+              code: row.language.code,
+              name: row.language.name,
+              nativeName: row.language.nativeName,
+              flag: row.language.flag,
+              createdAt: new Date(row.language.createdAt),
+            }
+          : undefined,
+        examples: row.examples.map((e) => ({
+          ...e,
+          createdAt: new Date(e.createdAt),
+        })),
+        tags: row.tags.map((t) => ({
+          ...t.tag,
+          createdAt: new Date(t.tag.createdAt),
+        })),
+      };
+
+      const reviews: VocabularyReview[] = row.reviews.map((r) => ({
+        ...r,
+        reviewType: r.reviewType as any,
+        difficulty: r.difficulty as any,
+        reviewedAt: new Date(r.reviewedAt),
+      }));
+
+      return { word, reviews };
+    } catch (e) {
+      console.error("Direct Neon DB getVocabularyDetailForUser failed, falling back:", e);
+    }
+  }
+
+  const word = await getVocabularyByIdForUser(userId, vocabId);
+  if (!word) return null;
+
+  const store = await getLocalStore();
+  const reviews = store.vocabularyReviews
+    .filter((r) => r.vocabularyId === vocabId && r.userId === userId)
+    .sort((a, b) => b.reviewedAt.getTime() - a.reviewedAt.getTime());
+
+  return { word, reviews };
 }
 
 export async function findDuplicateWord(

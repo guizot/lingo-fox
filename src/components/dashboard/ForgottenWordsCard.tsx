@@ -45,6 +45,7 @@ export function ForgottenWordsCard({ words }: ForgottenWordsCardProps) {
           <Link
             key={word.id}
             href={`/vocabulary/${word.id}`}
+            prefetch={true}
             className="flex items-center justify-between rounded-2xl border border-rose-100 bg-white p-3 shadow-2xs hover:border-rose-300 transition-all dark:border-rose-900/40 dark:bg-zinc-900/80"
           >
             <div>
