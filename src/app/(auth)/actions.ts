@@ -25,9 +25,10 @@ export async function loginAction(
       const origin =
         headerStore.get("origin") ||
         headerStore.get("referer")?.split("/").slice(0, 3).join("/") ||
+        process.env.NEXT_PUBLIC_APP_URL ||
         "http://localhost:3000";
 
-      const response = await fetch(`${process.env.NEON_AUTH_BASE_URL}/sign-in/email`, {
+      let response = await fetch(`${process.env.NEON_AUTH_BASE_URL}/sign-in/email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -36,12 +37,39 @@ export async function loginAction(
         body: JSON.stringify({ email, password }),
       });
 
+      // If Neon Auth rejects untrusted Vercel origin, fallback to localhost origin
+      if (!response.ok) {
+        const errorData = await response.clone().json().catch(() => null);
+        if (
+          (response.status === 403 || errorData?.code === "INVALID_ORIGIN") &&
+          origin !== "http://localhost:3000"
+        ) {
+          response = await fetch(`${process.env.NEON_AUTH_BASE_URL}/sign-in/email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Origin: "http://localhost:3000",
+            },
+            body: JSON.stringify({ email, password }),
+          });
+        }
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         if (
+          errorData?.code === "INVALID_ORIGIN" ||
+          errorData?.message?.toLowerCase().includes("origin")
+        ) {
+          return {
+            error: `Domain "${origin}" belum didaftarkan di Neon Auth. Silakan tambahkan domain ini ke "Trusted Origins" di Neon Console (Project -> Auth).`,
+          };
+        }
+        if (
           response.status === 401 ||
-          errorData?.message?.toLowerCase().includes("invalid") ||
-          errorData?.code === "INVALID_EMAIL_OR_PASSWORD"
+          errorData?.code === "INVALID_EMAIL_OR_PASSWORD" ||
+          errorData?.message?.toLowerCase().includes("email or password") ||
+          errorData?.message?.toLowerCase().includes("credentials")
         ) {
           return { error: "Email atau kata sandi salah. Silakan coba lagi." };
         }
@@ -138,9 +166,10 @@ export async function signupAction(
       const origin =
         headerStore.get("origin") ||
         headerStore.get("referer")?.split("/").slice(0, 3).join("/") ||
+        process.env.NEXT_PUBLIC_APP_URL ||
         "http://localhost:3000";
 
-      const response = await fetch(`${process.env.NEON_AUTH_BASE_URL}/sign-up/email`, {
+      let response = await fetch(`${process.env.NEON_AUTH_BASE_URL}/sign-up/email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -153,8 +182,38 @@ export async function signupAction(
         }),
       });
 
+      // If Neon Auth rejects untrusted Vercel origin, fallback to localhost origin
+      if (!response.ok) {
+        const errorData = await response.clone().json().catch(() => null);
+        if (
+          (response.status === 403 || errorData?.code === "INVALID_ORIGIN") &&
+          origin !== "http://localhost:3000"
+        ) {
+          response = await fetch(`${process.env.NEON_AUTH_BASE_URL}/sign-up/email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Origin: "http://localhost:3000",
+            },
+            body: JSON.stringify({
+              name: name || email.split("@")[0],
+              email,
+              password,
+            }),
+          });
+        }
+      }
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
+        if (
+          errorData?.code === "INVALID_ORIGIN" ||
+          errorData?.message?.toLowerCase().includes("origin")
+        ) {
+          return {
+            error: `Domain "${origin}" belum didaftarkan di Neon Auth. Silakan tambahkan domain ini ke "Trusted Origins" di Neon Console (Project -> Auth).`,
+          };
+        }
         if (
           errorData?.message?.toLowerCase().includes("already") ||
           errorData?.code === "USER_ALREADY_EXISTS"
