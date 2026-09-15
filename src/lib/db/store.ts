@@ -350,27 +350,13 @@ async function syncStoreToNeon(store: DatabaseState) {
           },
         });
     }
-
-    // 3. Delete items removed from store for active users
-    const userIds = [...new Set(store.vocabulary.map((v) => v.userId))];
-    for (const uId of userIds) {
-      const dbUserVocab = await db
-        .select({ id: schema.vocabulary.id })
-        .from(schema.vocabulary)
-        .where(eq(schema.vocabulary.userId, uId));
-      for (const row of dbUserVocab) {
-        if (!currentVocabIds.has(row.id)) {
-          await db.delete(schema.vocabulary).where(eq(schema.vocabulary.id, row.id));
-        }
-      }
-    }
   } catch (err) {
     console.error("Failed to sync store to Neon DB:", err);
   }
 }
 
 export async function getLocalStore(): Promise<DatabaseState> {
-  if (cachedStore) {
+  if (isTestEnv && cachedStore) {
     return cachedStore;
   }
 
@@ -456,28 +442,30 @@ export async function getLocalStore(): Promise<DatabaseState> {
             vocabularyTags: dbVocabTags,
           };
 
+          let currentInstance: DatabaseState;
           const save = async () => {
-            if (cachedStore) {
-              await syncStoreToNeon(cachedStore);
-              try {
-                const serialized = JSON.stringify({
-                  languages: cachedStore.languages,
-                  userLanguages: cachedStore.userLanguages,
-                  vocabulary: cachedStore.vocabulary,
-                  vocabularyExamples: cachedStore.vocabularyExamples,
-                  vocabularyReviews: cachedStore.vocabularyReviews,
-                  tags: cachedStore.tags,
-                  vocabularyTags: cachedStore.vocabularyTags,
-                }, null, 2);
-                await fs.writeFile(DATA_FILE, serialized, "utf-8");
-              } catch (e) {
-                console.error("Failed to backup store:", e);
-              }
+            await syncStoreToNeon(currentInstance);
+            try {
+              const serialized = JSON.stringify({
+                languages: currentInstance.languages,
+                userLanguages: currentInstance.userLanguages,
+                vocabulary: currentInstance.vocabulary,
+                vocabularyExamples: currentInstance.vocabularyExamples,
+                vocabularyReviews: currentInstance.vocabularyReviews,
+                tags: currentInstance.tags,
+                vocabularyTags: currentInstance.vocabularyTags,
+              }, null, 2);
+              await fs.writeFile(DATA_FILE, serialized, "utf-8");
+            } catch (e) {
+              // Ignore backup write failure in serverless environments
             }
           };
 
-          cachedStore = { ...stateData, save };
-          return cachedStore;
+          currentInstance = { ...stateData, save };
+          if (isTestEnv) {
+            cachedStore = currentInstance;
+          }
+          return currentInstance;
         }
       }
     } catch (e) {
@@ -526,32 +514,35 @@ export async function getLocalStore(): Promise<DatabaseState> {
     stateData = createInitialState();
   }
 
+  let currentInstance: DatabaseState;
   const save = async () => {
-    if (cachedStore) {
-      if (db && !isTestEnv) {
-        await syncStoreToNeon(cachedStore);
-      }
-      try {
-        const serialized = JSON.stringify({
-          languages: cachedStore.languages,
-          userLanguages: cachedStore.userLanguages,
-          vocabulary: cachedStore.vocabulary,
-          vocabularyExamples: cachedStore.vocabularyExamples,
-          vocabularyReviews: cachedStore.vocabularyReviews,
-          tags: cachedStore.tags,
-          vocabularyTags: cachedStore.vocabularyTags,
-        }, null, 2);
-        await fs.writeFile(DATA_FILE, serialized, "utf-8");
-      } catch (e) {
-        console.error("Failed to save local store:", e);
-      }
+    if (db && !isTestEnv) {
+      await syncStoreToNeon(currentInstance);
+    }
+    try {
+      const serialized = JSON.stringify({
+        languages: currentInstance.languages,
+        userLanguages: currentInstance.userLanguages,
+        vocabulary: currentInstance.vocabulary,
+        vocabularyExamples: currentInstance.vocabularyExamples,
+        vocabularyReviews: currentInstance.vocabularyReviews,
+        tags: currentInstance.tags,
+        vocabularyTags: currentInstance.vocabularyTags,
+      }, null, 2);
+      await fs.writeFile(DATA_FILE, serialized, "utf-8");
+    } catch (e) {
+      // Ignore write errors in serverless environments
     }
   };
 
-  cachedStore = {
+  currentInstance = {
     ...stateData,
     save,
   };
 
-  return cachedStore;
+  if (isTestEnv) {
+    cachedStore = currentInstance;
+  }
+
+  return currentInstance;
 }
